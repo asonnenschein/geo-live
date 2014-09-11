@@ -2,8 +2,10 @@ var url = require('url')
   , http = require('http')
   , domain = require('domain')
   , dom = require('xmldom').DOMParser
+  , xpath = require('xpath.js')
   , sax = require('sax')
-  , saxPath = require('saxpath')
+  , saxpath = require('saxpath')
+  , xml2json = require('xml2json')
   ;
 
 function buildRequest (cswBase, startRecord, maxRecord) {
@@ -34,25 +36,37 @@ function scrapeCsw (parameters, callback) {
 
   serverDomain.run(function () {
     http.get(parameters, function (res) {
-      var nextRecord;
-      searchResults.on('match', function (xml) {
+      if (res.statusCode === 200) {
+        var nextRecord;
 
-      });
-      fullRecord.on('match', function (xml) {
+        res.pipe(saxParser);
 
-      });
-      fullRecord.on('end', function () {
+        searchResults.on('match', function (xml) {
+          var doc = new dom().parseFromString(xml);
+          nextRecord = xpath(doc, '@nextRecord')[0].value;
+        });
+        
+        fullRecord.on('match', function (xml) {
+          console.log(xml2json.toJson(xml));
+          //console.log(xml);
+        });
 
-      });
-      res.on('end', function () {
-
-      });
-      res.on('error', function (err) {
-
-      })
+        fullRecord.on('end', function () {
+          console.log('end');
+        });
+        
+        res.on('end', function () {
+          console.log('end');
+        });
+        
+        res.on('error', function (err) {
+          console.log(err);
+        })        
+      }
     })
   });
 
 }
 
 exports.buildRequest = buildRequest;
+exports.scrapeCsw = scrapeCsw;

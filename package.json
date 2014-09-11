@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "express": "4.9.0",
+    "express-params": "0.0.3",
     "pg": "3.4.2",
     "async": "0.9.0",
     "should": "4.0.4",
@@ -25,7 +26,9 @@
     "mocha": "1.21.4",
     "sax": "0.6.0",
     "saxpath": "0.6.1",
-    "xmldom": "0.1.19"
+    "xmldom": "0.1.19",
+    "xpath.js": "1.0.5",
+    "body-parser": "1.8.1"
   },
   "homepage": "https://github.com/asonnenschein/geo-live"
 }
