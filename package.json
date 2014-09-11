@@ -1,0 +1,31 @@
+{
+  "name": "geo-live",
+  "version": "0.0.0",
+  "description": "Live status monitor for CSW and Geoserver",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asonnenschein/geo-live.git"
+  },
+  "author": "Adrian Sonnenschein",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/asonnenschein/geo-live/issues"
+  },
+  "dependencies": {
+    "express": "4.9.0",
+    "pg": "3.4.2",
+    "async": "0.9.0",
+    "should": "4.0.4",
+    "supertest": "0.13.0",
+    "request": "2.42.0",
+    "mocha": "1.21.4",
+    "sax": "0.6.0",
+    "saxpath": "0.6.1",
+    "xmldom": "0.1.19"
+  },
+  "homepage": "https://github.com/asonnenschein/geo-live"
+}
