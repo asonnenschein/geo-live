@@ -1,5 +1,6 @@
 var url = require('url')
   , http = require('http')
+  , request = require('request')
   , domain = require('domain')
   , dom = require('xmldom').DOMParser
   , xpath = require('xpath.js')
@@ -27,17 +28,12 @@ function scrapeCsw (parameters, callback) {
   var saxParser = sax.createStream(true, {lowercasetags: true, trim: true})
     , searchResults = new saxpath.SaXPath(saxParser, '//csw:searchResults')
     , fullRecord = new saxpath.SaXPath(saxParser, '//gmd:MD_Metadata')
-    , serverDomain = domain.create()
     ;
 
-  serverDomain.on('error', function (err) {
-    callback(err);
-  });
+    var count = 0;
 
-  serverDomain.run(function () {
     http.get(parameters, function (res) {
       if (res.statusCode === 200) {
-        var nextRecord;
 
         res.pipe(saxParser);
 
@@ -47,12 +43,18 @@ function scrapeCsw (parameters, callback) {
         });
         
         fullRecord.on('match', function (xml) {
-          console.log(xml2json.toJson(xml));
-          //console.log(xml);
-        });
+          try {
+            var fileId = new RegExp(rex.fileId)
+              , contact = new RegExp(rex.contact)
+              , identity = new RegExp(rex.identity)
+              , distrib = new RegExp(rex.distrib)
+              , nextRecord
+              ;
 
-        fullRecord.on('end', function () {
-          console.log('end');
+            console.log({
+              fileId: fileId.exec(xml)[1],
+            });
+
         });
         
         res.on('end', function () {
@@ -64,7 +66,6 @@ function scrapeCsw (parameters, callback) {
         })        
       }
     })
-  });
 
 }
 
