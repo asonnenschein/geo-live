@@ -43,18 +43,19 @@ function scrapeCsw (parameters, callback) {
         });
         
         fullRecord.on('match', function (xml) {
+          var obj
+            , doc
+            ;
+
           try {
-            var fileId = new RegExp(rex.fileId)
-              , contact = new RegExp(rex.contact)
-              , identity = new RegExp(rex.identity)
-              , distrib = new RegExp(rex.distrib)
-              , nextRecord
-              ;
-
-            console.log({
-              fileId: fileId.exec(xml)[1],
-            });
-
+            obj = xml2json.toJson(xml, {object: true});
+            obj = obj['gmd:MD_Metadata'];
+            doc = {};
+            doc.id = obj['gmd:fileIdentifier']['gco:CharacterString'];
+            console.log(doc);
+          } catch (err) {
+            console.log(err);
+          }
         });
         
         res.on('end', function () {
