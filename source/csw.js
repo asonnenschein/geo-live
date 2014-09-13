@@ -31,6 +31,20 @@ function jsonGet (obj, prop, def) {
   }
 }
 
+function buildContact (obj) {
+  contact = {};
+  contact.name = jsonGet(obj, 'gmd:CI_ResponsibleParty.gmd:individualName.gco:CharacterString');
+  contact.organization = jsonGet(obj, 'gmd:CI_ResponsibleParty.gmd:organisationName.gco:CharacterString');
+  contact.phone = jsonGet(obj, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:phone.gmd:CI_Telephone.gmd:voice.gco:CharacterString');
+  contact.email = jsonGet(obj, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:electronicMailAddress.gco:CharacterString');
+  contact.address = {};
+  contact.address.street = jsonGet(obj, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:deliveryPoint.gco:CharacterString');
+  contact.address.city = jsonGet(obj, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:city.gco:CharacterString');
+  contact.address.state = jsonGet(obj, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:administrativeArea.gco:CharacterString');
+  contact.address.zip = jsonGet(obj, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:postalCode.gco:CharacterString');
+  return contact;
+}
+
 function buildRequest (cswBase, startRecord, maxRecord) {
   var host = url.parse(cswBase)['host']
     , path = url.parse(cswBase)['path']
@@ -65,27 +79,64 @@ function scrapeCsw (parameters, callback) {
       fullRecord.on('match', function (xml) {
         var obj
           , doc
-          , contact
+          , metaContact
+          , ident
+          , resParties
+          , resParty
           ;
 
         try {
           obj = xml2json.toJson(xml, {object: true});
-          contact = jsonGet(obj, 'gmd:MD_Metadata:gmd:contact');
           doc = {};
-          doc.id = jsonGet(obj, 'gmd:MD_Metadata.gmd:fileIdentifier.gco:CharacterString.$t');
-          doc.contact = {};
-          doc.contact.name = jsonGet(contact, 'gmd:CI_ResponsibleParty.gmd:individualName.gco:CharacterString.$t');
-          doc.contact.organization = jsonGet(contact, 'gmd:CI_ResponsibleParty.gmd:organisationName.gco:CharacterString.$t');
-          doc.contact.phone = jsonGet(contact, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:phone.gmd:CI_Telephone.gmd:voice.gco:CharacterString.$t');
-          doc.contact.email = jsonGet(contact, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:electronicMailAddress.gco:CharacterString.$t');
-          doc.contact.address = {};
-          doc.contact.address.street = jsonGet(contact, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:deliveryPoint.gco:CharacterString.$t');
-          doc.contact.address.city = jsonGet(contact, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:city.gco:CharacterString.$t');
-          doc.contact.address.state = jsonGet(contact, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:administrativeArea.gco:CharacterString.$t');
-          doc.contact.address.zip = jsonGet(contact, 'gmd:CI_ResponsibleParty.gmd:contactInfo.gmd:CI_Contact.gmd:address.gmd:CI_Address.gmd:postalCode.gco:CharacterString.$t');
+
+          doc.id = jsonGet(obj, 'gmd:MD_Metadata.gmd:fileIdentifier.gco:CharacterString');
+
+          metaContact = jsonGet(obj, 'gmd:MD_Metadata.gmd:contact');
+          doc.MetadataContact = buildContact(metaContact);
+          
+          ident = jsonGet(obj, 'gmd:MD_Metadata.gmd:identificationInfo');
+          ident = jsonGet(ident, '0', ident);
+          ident = jsonGet(ident, 'gmd:MD_DataIdentification');
+          
+          doc.title = jsonGet(ident, 'gmd:citation.gmd:CI_Citation.gmd:title.gco:CharacterString');
+          doc.description = jsonGet(ident, 'gmd:abstract.gco:CharacterString');
+          resParties = jsonGet(ident, 'gmd:citation.gmd:CI_Citation.gmd:citedResponsibleParty', []);
+          
+          if (resParties['gmd:CI_ResponsibleParty']) {
+            resParties = [resParties];
+          }
+          
+          doc.Authors = [];
+          for (i = 0; i < resParties.length; i++) {
+            resParty = resParties[i];
+            doc.Authors.push(buildContact(resParty));
+          }
+
+          doc.Keywords = [];
+          descKeywords = jsonGet(ident, 'gmd:descriptiveKeywords', []);
+          if (descKeywords['gmd:MD_Keywords']) {
+            descKeywords = [descKeywords];
+          }
+          for (j = 0; j < descKeywords.length; j++) {
+            descKeyword = descKeywords[i];
+            keywords = jsonGet(descKeyword, 'gmd:MD_Keywords.gmd:keyword', []);
+            if (keywords['gco:CharacterString']) {
+              keywords = [keywords];
+            }
+            for (k = 0; k < keywords.length; k++) {
+              keyword = keywords[k];
+              words = jsonGet(keyword, 'gco:CharacterString', null);
+              split = words.split(',');
+              for (l = 0; l < split.length; l++) {
+                word = split[l];
+                doc.Keywords.push(word.trim());
+              }
+            }
+          }
+
           console.log(doc);
         } catch (err) {
-          // Do something here...
+          console.log(err);
         }
       });
       
