@@ -83,10 +83,46 @@ function scrapeCsw (parameters, callback) {
           , ident
           , resParties
           , resParty
+          , descKeywords
+          , descKeyword
+          , keywords
+          , keyword
+          , words
+          , split
+          , word
+          , extent
+          , distributors
+          , distributor
+          , distributions
+          , distribution
+          , linkLookup
+          , id
           ;
 
         try {
           obj = xml2json.toJson(xml, {object: true});
+          
+          function onlineResource (distOption) {
+            return jsonGet(distOption, 'gmd:MD_DigitalTransferOptions.gmd:onLine.gmd:CI_OnlineResource');
+          }
+          function getDistributorLink (dist) {
+            var id = dist['xlink:href'].replace('#', '');
+            return linkLookup[id];
+          }
+          function buildLink (onlineResource, responsibleParty) {
+            var url
+              , protocol
+              , link
+              , guess
+              , serviceType
+              , name
+              ;
+
+            url = jsonGet(onlineResource, 'gmd:linkage.gmd:URL');
+            protocol = jsonGet(onlineResource, 'gmd:protocol.gco:CharacterString');
+            protocol = protocol.toUpperCase();
+          }
+
           doc = {};
 
           doc.id = jsonGet(obj, 'gmd:MD_Metadata.gmd:fileIdentifier.gco:CharacterString');
@@ -134,9 +170,58 @@ function scrapeCsw (parameters, callback) {
             }
           }
 
+          extent = jsonGet(ident, 'gmd:extent');
+          doc.GeographicExtent = {};
+          doc.GeographicExtent.NorthBound = parseFloat(jsonGet(extent, 'gmd:EX_Extent.gmd:geographicElement.gmd:EX_GeographicBoundingBox.gmd:northBoundLatitude.gco:Decimal'));
+          doc.GeographicExtent.SouthBound = parseFloat(jsonGet(extent, 'gmd:EX_Extent.gmd:geographicElement.gmd:EX_GeographicBoundingBox.gmd:southBoundLatitude.gco:Decimal'));
+          doc.GeographicExtent.EastBound = parseFloat(jsonGet(extent, 'gmd:EX_Extent.gmd:geographicElement.gmd:EX_GeographicBoundingBox.gmd:eastBoundLongitude.gco:Decimal'));
+          doc.GeographicExtent.WestBound = parseFloat(jsonGet(extent, 'gmd:EX_Extent.gmd:geographicElement.gmd:EX_GeographicBoundingBox.gmd:westBoundLongitude.gco:Decimal'));
+
+          doc.Distributors = [];
+          distributors = jsonGet(obj, 'gmd:MD_Metadata.gmd:distributionInfo.gmd:MD_Distribution.gmd:distributor', []);
+          if (distributors['gmd:MD_Distributor']) {
+            distributors = [distributors];
+          }
+          for (m = 0; m < distributors.length; m++) {
+            distributor = distributors[m];
+            doc.Distributors.push(buildContact(jsonGet(distributor, 'gmd:MD_Distributor.gmd:distributorContact')));
+          }
+          distributions = jsonGet(obj, 'gmd:MD_Metadata.gmd:distributionInfo.gmd:MD_Distribution.gmd:transferOptions');
+          if (distributions['gmd:MD_DigitalTransferOptions']) {
+            distributions = [distributions];
+          }
+          linkLookup = {};
+          for (n = 0; n < distributions.length; n++) {
+            distribution = distributions[n];
+            id = jsonGet(distribution, 'gmd:MD_DigitalTransferOptions.id');
+            linkLookup[id] = distribution;
+          }
+          for (o = 0; o < distributors.length; o++) {
+            isoDist = distributors[o];
+            distOptions = jsonGet(isoDist, 'gmd:MD_Distributor.gmd:distributorTransferOptions', []);
+            if (distOptions['gmd:MD_DigitalTransferOptions'] || distOptions['xlink:href']) {
+              distOptions = [distOptions];
+            }
+            distOutput = [];
+            for (p = 0; p < distOptions.length; p++) {
+              dist = distOptions[p];
+              if (dist['xlink:href']) {
+                distOutput.push(getDistributorLink(dist));
+              } else {
+                distOutput.push(dist);
+              }
+            }
+            responsibleParty = jsonGet(isoDist, 'gmd:MD_Distributor.gmd:distributorContact');
+            distributorLinks = [];
+            for (q = 0; q < distOutput.length; q++) {
+              distOpt = distOutput[q];
+              distributorLinks.push(buildLink(onlineResource(distOpt), responsibleParty));
+            }
+          }
+
           console.log(doc);
         } catch (err) {
-          console.log(err);
+          //console.log(err);
         }
       });
       
