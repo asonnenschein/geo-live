@@ -102,6 +102,12 @@ function scrapeCsw (parameters, callback) {
         try {
           obj = xml2json.toJson(xml, {object: true});
           
+          serviceTypes = ['OGC:WMS', 'OGC:WFS', 'OGC:WCS', 'esri', 'opendap'];
+          capServiceTypes = [];
+          for (i = 0; i < serviceTypes.length; i++) {
+            type = serviceTypes[i];
+            capServiceTypes.push(type.toUpperCase());
+          }
           function onlineResource (distOption) {
             return jsonGet(distOption, 'gmd:MD_DigitalTransferOptions.gmd:onLine.gmd:CI_OnlineResource');
           }
@@ -121,6 +127,25 @@ function scrapeCsw (parameters, callback) {
             url = jsonGet(onlineResource, 'gmd:linkage.gmd:URL');
             protocol = jsonGet(onlineResource, 'gmd:protocol.gco:CharacterString');
             protocol = protocol.toUpperCase();
+            if (capServiceTypes.indexOf(protocol) >= 0) {
+              serviceType = protocol;
+            } else {
+              guess = guessServiceType(url);
+              if (guess) serviceType = guess;
+            }
+            name = null;
+            if (responsibleParty) {
+              name = jsonGet(responsibleParty, 'gmd:CI_ResponsibleParty.gmd:individualName.gco:CharacterString');
+            } if (['Missing', 'missing', 'No Name Was Given'].indexOf(name) > -1) {
+              name = jsonGet(responsibleParty, 'gmd:CI_ResponsibleParty.gmd:organisationName.gco:CharacterString');
+            }
+            link = {
+              URL: url,
+              Description: jsonGet(onlineResource, 'gmd:description.gco:CharacterString')
+            };
+            if (serviceType) link.serviceType = serviceType;
+            if (name) link.Distributor = name;
+            return link;
           }
 
           doc = {};
@@ -143,7 +168,7 @@ function scrapeCsw (parameters, callback) {
           }
           
           doc.Authors = [];
-          for (i = 0; i < resParties.length; i++) {
+          for (j = 0; j < resParties.length; j++) {
             resParty = resParties[i];
             doc.Authors.push(buildContact(resParty));
           }
@@ -153,17 +178,17 @@ function scrapeCsw (parameters, callback) {
           if (descKeywords['gmd:MD_Keywords']) {
             descKeywords = [descKeywords];
           }
-          for (j = 0; j < descKeywords.length; j++) {
+          for (k = 0; k < descKeywords.length; k++) {
             descKeyword = descKeywords[i];
             keywords = jsonGet(descKeyword, 'gmd:MD_Keywords.gmd:keyword', []);
             if (keywords['gco:CharacterString']) {
               keywords = [keywords];
             }
-            for (k = 0; k < keywords.length; k++) {
+            for (l = 0; l < keywords.length; l++) {
               keyword = keywords[k];
               words = jsonGet(keyword, 'gco:CharacterString', null);
               split = words.split(',');
-              for (l = 0; l < split.length; l++) {
+              for (m = 0; m < split.length; m++) {
                 word = split[l];
                 doc.Keywords.push(word.trim());
               }
@@ -182,8 +207,8 @@ function scrapeCsw (parameters, callback) {
           if (distributors['gmd:MD_Distributor']) {
             distributors = [distributors];
           }
-          for (m = 0; m < distributors.length; m++) {
-            distributor = distributors[m];
+          for (n = 0; n < distributors.length; n++) {
+            distributor = distributors[n];
             doc.Distributors.push(buildContact(jsonGet(distributor, 'gmd:MD_Distributor.gmd:distributorContact')));
           }
           distributions = jsonGet(obj, 'gmd:MD_Metadata.gmd:distributionInfo.gmd:MD_Distribution.gmd:transferOptions');
@@ -191,19 +216,19 @@ function scrapeCsw (parameters, callback) {
             distributions = [distributions];
           }
           linkLookup = {};
-          for (n = 0; n < distributions.length; n++) {
+          for (o = 0; o < distributions.length; o++) {
             distribution = distributions[n];
             id = jsonGet(distribution, 'gmd:MD_DigitalTransferOptions.id');
             linkLookup[id] = distribution;
           }
-          for (o = 0; o < distributors.length; o++) {
+          for (p = 0; p < distributors.length; p++) {
             isoDist = distributors[o];
             distOptions = jsonGet(isoDist, 'gmd:MD_Distributor.gmd:distributorTransferOptions', []);
             if (distOptions['gmd:MD_DigitalTransferOptions'] || distOptions['xlink:href']) {
               distOptions = [distOptions];
             }
             distOutput = [];
-            for (p = 0; p < distOptions.length; p++) {
+            for (q = 0; q < distOptions.length; q++) {
               dist = distOptions[p];
               if (dist['xlink:href']) {
                 distOutput.push(getDistributorLink(dist));
@@ -213,7 +238,7 @@ function scrapeCsw (parameters, callback) {
             }
             responsibleParty = jsonGet(isoDist, 'gmd:MD_Distributor.gmd:distributorContact');
             distributorLinks = [];
-            for (q = 0; q < distOutput.length; q++) {
+            for (r = 0; r < distOutput.length; r++) {
               distOpt = distOutput[q];
               distributorLinks.push(buildLink(onlineResource(distOpt), responsibleParty));
             }
