@@ -97,6 +97,8 @@ function scrapeCsw (parameters, callback) {
           , distribution
           , linkLookup
           , id
+          , moreLinks
+          , linksList
           ;
 
         try {
@@ -109,7 +111,7 @@ function scrapeCsw (parameters, callback) {
             capServiceTypes.push(type.toUpperCase());
           }
           function onlineResource (distOption) {
-            return jsonGet(distOption, 'gmd:MD_DigitalTransferOptions.gmd:onLine.gmd:CI_OnlineResource');
+            return jsonGet(distOption, 'gmd:MD_DigitalTransferOptions.gmd:onLine.gmd:CI_OnlineResource', {});
           }
           function getDistributorLink (dist) {
             var id = dist['xlink:href'].replace('#', '');
@@ -126,12 +128,14 @@ function scrapeCsw (parameters, callback) {
 
             url = jsonGet(onlineResource, 'gmd:linkage.gmd:URL');
             protocol = jsonGet(onlineResource, 'gmd:protocol.gco:CharacterString');
-            protocol = protocol.toUpperCase();
-            if (capServiceTypes.indexOf(protocol) >= 0) {
-              serviceType = protocol;
-            } else {
-              guess = guessServiceType(url);
-              if (guess) serviceType = guess;
+            if (protocol) {
+              protocol = protocol.toUpperCase();              
+              if (capServiceTypes.indexOf(protocol) >= 0) {
+                serviceType = protocol;
+              } else {
+                guess = guessServiceType(url);
+                if (guess) serviceType = guess;
+              }
             }
             name = null;
             if (responsibleParty) {
@@ -215,21 +219,28 @@ function scrapeCsw (parameters, callback) {
           if (distributions['gmd:MD_DigitalTransferOptions']) {
             distributions = [distributions];
           }
-          linkLookup = {};
+          moreLinks = [];
           for (o = 0; o < distributions.length; o++) {
-            distribution = distributions[n];
+            distOpt = distributions[o];
+            moreLinks.push(buildLink(onlineResource(distOpt)));
+          }
+          linkLookup = {};
+          for (p = 0; p < distributions.length; p++) {
+            distribution = distributions[p];
             id = jsonGet(distribution, 'gmd:MD_DigitalTransferOptions.id');
             linkLookup[id] = distribution;
           }
-          for (p = 0; p < distributors.length; p++) {
-            isoDist = distributors[o];
+          for (q = 0; q < distributors.length; q++) {
+            isoDist = distributors[q];
+            // This tag doesn't exist...?
             distOptions = jsonGet(isoDist, 'gmd:MD_Distributor.gmd:distributorTransferOptions', []);
+            console.log(distOptions);
             if (distOptions['gmd:MD_DigitalTransferOptions'] || distOptions['xlink:href']) {
               distOptions = [distOptions];
             }
             distOutput = [];
-            for (q = 0; q < distOptions.length; q++) {
-              dist = distOptions[p];
+            for (r = 0; r < distOptions.length; r++) {
+              dist = distOptions[r];
               if (dist['xlink:href']) {
                 distOutput.push(getDistributorLink(dist));
               } else {
@@ -238,13 +249,29 @@ function scrapeCsw (parameters, callback) {
             }
             responsibleParty = jsonGet(isoDist, 'gmd:MD_Distributor.gmd:distributorContact');
             distributorLinks = [];
-            for (r = 0; r < distOutput.length; r++) {
-              distOpt = distOutput[q];
+            for (s = 0; s < distOutput.length; s++) {
+              distOpt = distOutput[s];
               distributorLinks.push(buildLink(onlineResource(distOpt), responsibleParty));
+            }
+            for (t = 0; t < distOutput.length; t++) {
+              link = distributorLinks[t];
+              linksList[link.URL] = link;
+            }
+          }
+          for (u = 0; u < distributorLinks.length; u++) {
+            link = moreLinks[u];
+            if (linksList[link.URL]) {
+              linksList[link.URL] = link;
             }
           }
 
-          console.log(doc);
+          doc.Links = [];
+          for (url in linksList) {
+            link = linksList[url];
+            doc.Links.push(link);
+          }
+
+//          console.log(doc);
         } catch (err) {
           //console.log(err);
         }
