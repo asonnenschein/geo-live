@@ -28,7 +28,9 @@
     "saxpath": "0.6.1",
     "xmldom": "0.1.19",
     "xpath.js": "1.0.5",
-    "body-parser": "1.8.1"
+    "body-parser": "1.8.1",
+    "orm": "2.1.19",
+    "sql-ddl-sync": "2.4.1"
   },
   "homepage": "https://github.com/asonnenschein/geo-live"
 }
